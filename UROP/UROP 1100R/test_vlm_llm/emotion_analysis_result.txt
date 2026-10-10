@@ -1,0 +1,18 @@
+Two-Stage Image Analysis Result
+==================================================
+
+Image Description (Moondream):
+
+In the image, there are four individuals crossing a street at an intersection. The person leading the group is wearing a blue jacket and black pants, while the other three individuals follow closely behind them. The first person is carrying a backpack, suggesting they might be students or professionals on their way to work or school. The second individual is holding a handbag, possibly indicating that they are running errands or going shopping. The third person is wearing a suit and tie, which could suggest they have just come from a formal event or business meeting.
+
+The street they are crossing is lined with trees, providing shade and adding to the overall ambiance of the scene. A car can be seen parked on the side of the road, indicating that this intersection is located in an urban setting.
+
+==================================================
+
+Emotion Analysis (DeepSeek):
+Person 1: Happy, Content, Calm  
+Person 2: focused, serious, concerned  
+Person 3: anxious, confused, nervous  
+Person 4: excited, Concerned, worried  
+
+Overall atmosphere: collaborative, unsure, but moving forward together.
