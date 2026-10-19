@@ -427,5 +427,3 @@ All compile\-time switches and window sizes are defined in `sensor_box.h`\. Enab
 ## License
 
 Add your license here, e\.g\. MIT / Apache 2\.0\.
-
-> （注：部分内容由豆包工作 AI 生成）
