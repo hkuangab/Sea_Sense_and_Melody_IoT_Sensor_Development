@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Three.js - Load .GLTF with Animation</title>
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            background: #effff8;
+        }
+        #c {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        /* Style and position the overlay */
+        #overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.75);
+            color: #ffffff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            pointer-events: none; /* Allows mouse clicks to pass through to the 3D canvas controls */
+            min-width: 200px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        #overlay h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 5px;
+        }
+        #overlay p {
+            margin: 6px 0;
+            font-size: 14px;
+        }
+        #debug-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 230px;
+            padding: 15px;
+            border-radius: 8px;
+            background: rgba(255, 235, 243, 0.94);
+            color: #6e3c52;
+            font: 14px Arial, sans-serif;
+            border: 1px solid #f2b8cc;
+            box-shadow: 0 6px 18px rgba(170, 93, 122, 0.22);
+            z-index: 1;
+        }
+        #debug-controls h3 {
+            margin: 0 0 10px;
+            color: #a84f76;
+            border-bottom: 1px solid #f2b8cc;
+            padding-bottom: 7px;
+        }
+        #debug-controls label {
+            display: block;
+            margin-top: 9px;
+        }
+        #debug-controls input[type="range"],
+        #debug-controls select {
+            width: 100%;
+        }
+        #debug-controls input[type="range"] {
+            accent-color: #e88baa;
+            cursor: pointer;
+        }
+        #debug-controls input[type="range"]::-webkit-slider-runnable-track {
+            height: 6px;
+            border-radius: 6px;
+            background: #f7cbd9;
+        }
+        #debug-controls input[type="range"]::-webkit-slider-thumb {
+            width: 15px;
+            height: 15px;
+            margin-top: -4px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            background: #e88baa;
+            box-shadow: 0 1px 4px rgba(168, 79, 118, 0.35);
+            appearance: none;
+        }
+        #debug-controls input[type="range"]::-moz-range-track {
+            height: 6px;
+            border-radius: 6px;
+            background: #f7cbd9;
+        }
+        #debug-controls input[type="range"]::-moz-range-thumb {
+            width: 13px;
+            height: 13px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            background: #e88baa;
+            box-shadow: 0 1px 4px rgba(168, 79, 118, 0.35);
+        }
+        #debug-controls select {
+            padding: 4px 6px;
+            border: 1px solid #efadc4;
+            border-radius: 5px;
+            background: #fff8fb;
+            color: #6e3c52;
+        }
+        #debug-controls output {
+            color: #a84f76;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<!-- Text Overlay Container -->
+    <div id="overlay">
+        <h3>Live AI & Sensor Data</h3>
+        <p><strong>Prediction:</strong> <span id="prediction">-</span></p>
+        <p><strong>Sound Energy:</strong> <span id="sound_energy">-</span></p>
+        <p><strong>Touch Frequency:</strong> <span id="touch_frequency">-</span></p>
+        <p><strong>Brightness:</strong> <span id="brightness">-</span></p>
+        <p><strong>Color:</strong> <span id="colorValue">-</span></p>
+    </div>
+    <div id="debug-controls">
+        <h3>simulated controls</h3>
+        <label>
+            <input id="debug-enabled" type="checkbox">
+            Toggle
+        </label>
+        <label>
+            Sound energy: <output id="debug-sound-value">0.50</output>
+            <input id="debug-sound" type="range" min="0" max="1" step="0.01" value="0.5">
+        </label>
+        <label>
+            Touch frequency: <output id="debug-touch-value">0.00</output>
+            <input id="debug-touch" type="range" min="0" max="1" step="0.01" value="0">
+        </label>
+        <label>
+            Brightness: <output id="debug-brightness-value">0.50</output>
+            <input id="debug-brightness" type="range" min="0" max="1" step="0.01" value="0.5">
+        </label>
+        <label>
+            Red: <output id="debug-red-value">255</output>
+            <input id="debug-red" type="range" min="0" max="255" step="1" value="255">
+        </label>
+        <label>
+            Green: <output id="debug-green-value">0</output>
+            <input id="debug-green" type="range" min="0" max="255" step="1" value="0">
+        </label>
+        <label>
+            Blue: <output id="debug-blue-value">0</output>
+            <input id="debug-blue" type="range" min="0" max="255" step="1" value="0">
+        </label>
+        <label>
+            Prediction:
+            <select id="debug-prediction">
+                <option>happy</option>
+                <option>calm</option>
+                <option>excited</option>
+                <option>sad</option>
+                <option>neutral</option>
+            </select>
+        </label>
+    </div>
+<script type="importmap">{
+    "imports": {
+        "three": "https://threejs.org/build/three.module.js",
+        "three/addons/": "https://threejs.org/examples/jsm/"
+    }
+}</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+function main() {
+    const canvas = document.querySelector('#c');
+    const renderer = new THREE.WebGLRenderer({ antialias: true, canvas, alpha: true });
+
+    const fov = 45;
+    const aspect = 2;
+    const near = 0.1;
+    const far = 100;
+    const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+    camera.position.set(0, 10, 20);
+
+    const controls = new OrbitControls(camera, canvas);
+    controls.target.set(0, 5, 0);
+    controls.update();
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xeffff8);
+
+{
+    const color = 0xFFFFFF; 
+    const intensity = 8; 
+    const light = new THREE.DirectionalLight(color, intensity);
+    light.position.set(0, 20, 0); 
+    scene.add(light);
+    scene.add(light.target); 
+}
+
+{
+    const color =  0xFFFFE0;
+    const intensity = 5;
+    const light = new THREE.DirectionalLight(color, intensity);
+    light.position.set(0, -20, 0); 
+    scene.add(light);
+    scene.add(light.target); 
+}
+
+
+{
+    const color = 0xFFFFFF; 
+    const intensity = 3; 
+    const light = new THREE.DirectionalLight(color, intensity);
+    light.position.set(20, 0, 20); 
+    scene.add(light);
+    scene.add(light.target); 
+}
+
+{
+    const color = 0xFFFFFF; 
+    const intensity = 3; 
+    const light = new THREE.DirectionalLight(color, intensity);
+    light.position.set(-20, 0, -20); 
+    scene.add(light);
+    scene.add(light.target); 
+}
+
+
+    let mixer;
+    let modelRoot;
+    let currentColor;
+    let currentNodeIndex = 0;
+    let currentSoundEnergy = 0;
+
+    const gltfLoader = new GLTFLoader();
+    const modelparts =[];
+    gltfLoader.load('../../models/fafaani9.gltf', (gltf) => {
+        const root = gltf.scene;
+        modelRoot = root;
+        scene.add(modelRoot);
+
+        root.traverse((child) => {
+        if (child.isMesh) {
+            //Instance a material for this child alone
+            child.material = child.material.clone();
+            child.material.transparent = true;
+
+            child.material.emissive = child.material.color;
+            child.material.emissiveMap = child.material.map;
+            child.material.emissiveIntensity = 0.2;
+
+            modelparts.push(child);
+        }    
+    }, undefined, (error) => {
+        console.error('Unable to load 3D model:', error);
+    });
+
+        mixer = new THREE.AnimationMixer(root);
+        gltf.animations.forEach((clip) => {
+            const action = mixer.clipAction(clip);
+            action.setLoop(THREE.LoopOnce, 1); 
+            action.play();
+        });
+
+        const box = new THREE.Box3().setFromObject(root);
+        const boxSize = box.getSize(new THREE.Vector3()).length();
+        const boxCenter = box.getCenter(new THREE.Vector3());
+        frameArea(boxSize * 0.5, boxSize, boxCenter, camera);
+        controls.maxDistance = boxSize * 10;
+        controls.target.copy(boxCenter);
+        controls.update();
+    });
+
+    //Websocket to connect this website to the python program
+    const socketProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    //Elements for the sensor values
+    const predEl = document.getElementById('prediction');
+    const soundEl = document.getElementById('sound_energy');
+    const touchEl = document.getElementById('touch_frequency');
+    const brightEl = document.getElementById('brightness');
+    const colEl = document.getElementById('colorValue');
+    const debugEnabled = document.getElementById('debug-enabled');
+    const debugSound = document.getElementById('debug-sound');
+    const debugTouch = document.getElementById('debug-touch');
+    const debugBrightness = document.getElementById('debug-brightness');
+    const debugRed = document.getElementById('debug-red');
+    const debugGreen = document.getElementById('debug-green');
+    const debugBlue = document.getElementById('debug-blue');
+    const debugPrediction = document.getElementById('debug-prediction');
+    const debugSoundValue = document.getElementById('debug-sound-value');
+    const debugTouchValue = document.getElementById('debug-touch-value');
+    const debugBrightnessValue = document.getElementById('debug-brightness-value');
+    const debugRedValue = document.getElementById('debug-red-value');
+    const debugGreenValue = document.getElementById('debug-green-value');
+    const debugBlueValue = document.getElementById('debug-blue-value');
+    let backendConnected = false;
+    let currentTouchFrequency = 0;
+
+    function updateDebugLabels() {
+        debugSoundValue.value = Number(debugSound.value).toFixed(2);
+        debugTouchValue.value = Number(debugTouch.value).toFixed(2);
+        debugBrightnessValue.value = Number(debugBrightness.value).toFixed(2);
+        debugRedValue.value = debugRed.value;
+        debugGreenValue.value = debugGreen.value;
+        debugBlueValue.value = debugBlue.value;
+    }
+
+    [debugSound, debugTouch, debugBrightness, debugRed, debugGreen, debugBlue].forEach((control) => {
+        control.addEventListener('input', updateDebugLabels);
+    });
+    updateDebugLabels();
+
+    function applySensorMessage(message) {
+        if (message.type !== 'SENSOR_DATA' ||
+            typeof message.color !== 'string' ||
+            typeof message.sound_energy !== 'number' ||
+            typeof message.touch_frequency !== 'number' ||
+            typeof message.brightness !== 'number' ||
+            typeof message.prediction !== 'string') {
+            return;
+        }
+
+        const soundEnergy = debugEnabled.checked
+            ? Number(debugSound.value)
+            : message.sound_energy;
+        const brightness = debugEnabled.checked
+            ? Number(debugBrightness.value)
+            : message.brightness;
+        const touchFrequency = debugEnabled.checked
+            ? Number(debugTouch.value)
+            : message.touch_frequency;
+        const prediction = debugEnabled.checked
+            ? debugPrediction.value
+            : message.prediction;
+        // Sensor-to-RGB mapping is intentionally left open for later.
+        const color = debugEnabled.checked ? getDebugColor() : message.color;
+
+        predEl.textContent = prediction;
+        currentSoundEnergy = soundEnergy;
+        currentTouchFrequency = Math.max(0, Math.min(1, touchFrequency));
+        soundEl.textContent = soundEnergy.toFixed(2);
+        touchEl.textContent = currentTouchFrequency.toFixed(2);
+        brightEl.textContent = brightness.toFixed(2);
+        colEl.textContent = color;
+        colEl.style.color = color;
+
+        updateModelParts(brightness);
+    }
+
+    function getDebugColor() {
+        return `rgb(${debugRed.value}, ${debugGreen.value}, ${debugBlue.value})`;
+    }
+
+    function updateModelParts(brightness) {
+        const lightGray = [220, 220, 220];
+        const redTarget = [255, 115, 166];
+        const greenTarget = [63, 255, 38];
+        const blueTarget = [115, 191, 255];
+
+        function blendChannel(value, target) {
+            const ratio = Number(value) / 255;
+            return lightGray.map((base, index) =>
+                Math.round(base + (target[index] - base) * ratio)
+            );
+        }
+
+        modelparts.forEach((mesh, index) => {
+            const channel = index % 3;
+            const target = channel === 0
+                ? redTarget
+                : channel === 1
+                    ? greenTarget
+                    : blueTarget;
+            const value = channel === 0
+                ? debugRed.value
+                : channel === 1
+                    ? debugGreen.value
+                    : debugBlue.value;
+            const [red, green, blue] = blendChannel(value, target);
+            const channelColor = `rgb(${red}, ${green}, ${blue})`;
+
+            mesh.material.color.set(channelColor);
+            mesh.material.emissive.set(channelColor);
+            const minGlow = 0.0;
+            const maxGlow = 1.0;
+            const glow = minGlow + (maxGlow - minGlow) * brightness;
+            mesh.material.emissiveIntensity = glow;
+        });
+    }
+
+    function connectWebSocket() {
+    const socket = new WebSocket(`${socketProtocol}//${location.host}/ws/game`);
+
+    socket.addEventListener('open', () => {
+        backendConnected = true;
+    });
+
+    // Listen for messages from the Python backend.
+    socket.addEventListener('message', (event) =>{
+        try{
+            const message = JSON.parse(event.data);
+            applySensorMessage(message);
+        } catch (error){
+            console.error('Invalid color message', error);
+        }
+    });
+ 
+
+    //Automatically attempt to reconnect if the backend disconnects
+    socket.addEventListener('close', () => {
+        backendConnected = false;
+        console.warn('WebSocket disconnected. Reconnecting in 2 seconds...');
+        setTimeout(connectWebSocket, 2000); // Auto-reconnect after 2 seconds
+    });
+
+    socket.addEventListener('error', (error) => {
+        console.error('WebSocket error:', error);
+        socket.close();
+    });
+    }
+
+    connectWebSocket();
+
+    // Live Server has no /ws/game endpoint, so provide local demo data.
+    setInterval(() => {
+        if (!backendConnected) {
+            applySensorMessage({
+                type: 'SENSOR_DATA',
+                sound_energy: Math.random(),
+                touch_frequency: Math.random(),
+                brightness: Math.random(),
+                color: '#ffffff',
+                prediction: 'neutral'
+            });
+        }
+    }, 200);
+ 
+ 
+    function frameArea(sizeToFitOnScreen, boxSize, boxCenter, camera) {
+        const halfSizeToFitOnScreen = sizeToFitOnScreen * 0.5;
+        const halfFovY = THREE.MathUtils.degToRad(camera.fov * 0.5);
+        const distance = halfSizeToFitOnScreen / Math.tan(halfFovY);
+        const direction = (new THREE.Vector3())
+            .subVectors(camera.position, boxCenter)
+            .multiply(new THREE.Vector3(1, 0, 1))
+            .normalize();
+        camera.position.copy(direction.multiplyScalar(distance).add(boxCenter));
+        camera.near = boxSize / 100;
+        camera.far = boxSize * 100;
+        camera.updateProjectionMatrix();
+        camera.lookAt(boxCenter.x, boxCenter.y, boxCenter.z);
+    }
+
+    function resizeRendererToDisplaySize(renderer) {
+        const canvas = renderer.domElement;
+        const width = canvas.clientWidth;
+        const height = canvas.clientHeight;
+        const needResize = canvas.width !== width || canvas.height !== height;
+        if (needResize) {
+            renderer.setSize(width, height, false);
+        }
+        return needResize;
+    }
+
+    function render() {
+        if (resizeRendererToDisplaySize(renderer)) {
+            const canvas = renderer.domElement;
+            camera.aspect = canvas.clientWidth / canvas.clientHeight;
+            camera.updateProjectionMatrix();
+        }
+
+
+        const delta = clock.getDelta();
+        if (mixer) {
+            mixer.update(delta);
+        }
+        if (modelRoot) {
+            const minRotationSpeed = 0.05;
+            const maxRotationSpeed = 1.5;
+            const rotationSpeed = minRotationSpeed
+                + (maxRotationSpeed - minRotationSpeed) * currentSoundEnergy;
+            modelRoot.rotation.y += rotationSpeed * delta;
+
+            const minScale = 0.75;
+            const maxScale = 1.35;
+            const modelScale = minScale
+                + (maxScale - minScale) * currentTouchFrequency;
+            modelRoot.scale.setScalar(modelScale);
+        }
+
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+    }
+
+    const clock = new THREE.Clock();
+    requestAnimationFrame(render);
+}
+
+main();
+</script>
+</body>
+</html>
