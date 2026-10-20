@@ -1,18 +1,14 @@
 /**
  * @file sound_sensor.c
- * @brief Implementation of the microphone sensor module.
+ * @brief Implementation of the microphone sensor module (analogue only).
  *
  * See sound_sensor.h for the full interface documentation.
  *
  * Implementation notes:
- *   - The gpiod chip handle `g_seg_chip` is declared in `seg7_display.h`
- *     and is reused here; this module does NOT open its own chip.
+ *   - All data comes from MCP3008 channel 1; no digital GPIO is used.
  *   - The per‑second spike counter is reset inside
  *     `sound_update_features()`, so that function must be called exactly
  *     once per second.
- *   - The digital pulse counter (`g_sound_pulse_count`) is incremented
- *     on rising edges of GPIO18 and reset to zero in
- *     `sound_update_features()`.
  *
  * Author:   KUANG, Haozhe
  *           The Hong Kong University of Science and Technology
@@ -20,27 +16,14 @@
  * Date:     2026/10/06
  */
 
-/*
- * sound_sensor.c - implementation of the microphone sensor module
- *
- * See sound_sensor.h for the full interface documentation.
- *
- * Author:   KUANG, Haozhe
- *          The Hong Kong University of Science and Technology
- * Email:    hkuangab@connect.ust.hk
- * Date:     2026/10/06
- */
-
 #include "sound_sensor.h"
 #include "sensor_box.h"
 #include "mcp3008.h"
-#include "seg7_display.h"
 #include "math_util.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <gpiod.h>
 
 #if ENABLE_SOUND
 
@@ -49,15 +32,6 @@
  * Defined elsewhere; used here in the human‑presence heuristic.
  */
 extern volatile int g_touch_count;
-
-/**
- * @brief Global pulse counter for the digital microphone output.
- *
- * Incremented on each rising edge of GPIO18 inside `sound_sample()`.
- * Reset to zero in `sound_update_features()`. Declared volatile because
- * it is written by the sampling loop and read by feature computation.
- */
-volatile int g_sound_pulse_count = 0;
 
 /**
  * @brief Ring buffer of raw ADC readings used for RMS energy calculation.
@@ -113,7 +87,7 @@ static int   g_raw = 0;
 static float g_energy = 0.0f;
 
 /**
- * @brief Speech rate (digital pulse count / 10, clamped to [0, 1]).
+ * @brief Speech rate – always 0.0 (no digital input).
  */
 static float g_speech_rate = 0.0f;
 
@@ -135,70 +109,18 @@ static int   g_spike = 0;
 static int   g_human_presence = 0;
 
 /**
- * @brief GPIO line number for the digital microphone output.
- */
-#define SOUND_GPIO_LINE    18
-
-/**
- * @brief Active level of the digital input.
- * Set to 1 if the module drives the line HIGH when sound is present;
- * set to 0 if it drives LOW. Adjust according to hardware.
- */
-#define SOUND_IRQ_ACTIVE   1
-
-/**
- * @brief Request object for the GPIO line (GPIO18).
- * NULL until `sound_init()` succeeds.
- */
-static struct gpiod_line_request *g_req = NULL;
-
-/**
- * @brief Previous digital level read from GPIO18.
- * Used for edge detection. Initialised to -1 to indicate “unknown”.
- */
-static int   g_prev_level = -1;
-
-/**
  * @brief Initialise the sound sensor.
  *
- * Requests GPIO18 through the shared chip handle `g_seg_chip`. If the
- * chip is not yet available (display driver not initialised), prints a
- * warning and continues with the digital path disabled. Otherwise,
- * configures the line as an input and reads the initial level.
+ * No hardware initialisation is required; the MCP3008 ADC is set up
+ * independently. This function exists for interface consistency.
  *
  * @param None.
  * @return void.
  */
 void sound_init(void)
 {
-    if (!g_seg_chip) {
-        fprintf(stderr,
-                "sound: seg7 chip not ready, cannot request GPIO%d\n",
-                SOUND_GPIO_LINE);
-        return;
-    }
-
-    unsigned int line = SOUND_GPIO_LINE;
-
-    struct gpiod_line_settings *s = gpiod_line_settings_new();
-    gpiod_line_settings_set_direction(s, GPIOD_LINE_DIRECTION_INPUT);
-
-    struct gpiod_line_config *lc = gpiod_line_config_new();
-    gpiod_line_config_add_line_settings(lc, &line, 1, s);
-
-    struct gpiod_request_config *rc = gpiod_request_config_new();
-    gpiod_request_config_set_consumer(rc, "sound");
-
-    g_req = gpiod_chip_request_lines(g_seg_chip, rc, lc);
-    if (!g_req) {
-        fprintf(stderr,
-                "sound: request GPIO%d failed, pulse counting disabled\n",
-                SOUND_GPIO_LINE);
-        return;
-    }
-
-    g_prev_level = gpiod_line_request_get_value(g_req, SOUND_GPIO_LINE);
-    printf("sound: GPIO%d polling ready\n", SOUND_GPIO_LINE);
+    /* Nothing to do – analogue path only. */
+    printf("sound: analogue-only mode (MCP3008 ch1)\n");
 }
 
 /**
@@ -211,8 +133,6 @@ void sound_init(void)
  *   4. Determine if the sample is “audible” (raw > 100) and store in
  *      the continuity ring buffer.
  *   5. If raw > 800, increment the per‑second spike counter.
- *   6. If the digital GPIO line is available, detect rising edges and
- *      increment `g_sound_pulse_count` accordingly.
  *
  * @param None.
  * @return void.
@@ -239,16 +159,6 @@ void sound_sample(void)
     if (norm > 800) {
         g_spike_count++;
     }
-
-    /* Edge detection on the digital input, if available. */
-    if (g_req) {
-        int lvl = gpiod_line_request_get_value(g_req, SOUND_GPIO_LINE);
-        if (g_prev_level < 0) g_prev_level = lvl;
-        if (lvl == SOUND_IRQ_ACTIVE && g_prev_level != SOUND_IRQ_ACTIVE) {
-            g_sound_pulse_count++;
-        }
-        g_prev_level = lvl;
-    }
 }
 
 /**
@@ -256,7 +166,7 @@ void sound_sample(void)
  *
  * Called exactly once per second. Computes:
  *   - RMS energy over the energy window (normalised to [0, 1]).
- *   - Speech rate = min(g_sound_pulse_count / 10.0, 1.0).
+ *   - Speech rate = 0.0 (no digital input).
  *   - Continuity = fraction of audible samples in the continuity window.
  *   - Spike count = snapshot of the per‑second spike accumulator, then
  *     resets it to zero.
@@ -279,12 +189,9 @@ void sound_update_features(void)
         g_energy = 0.0f;
 
     /*
-     * Speech rate is the digital pulse count per ten seconds, expressed
-     * as a ratio and clamped to [0, 1]. Modules without a digital
-     * output will report zero here.
+     * Speech rate is always 0 because there is no digital pulse input.
      */
-    g_speech_rate = (float)g_sound_pulse_count / 10.0f;
-    if (g_speech_rate > 1.0f) g_speech_rate = 1.0f;
+    g_speech_rate = 0.0f;
 
     /* Audible ratio over the continuity window. */
     int ones = 0;
@@ -303,22 +210,17 @@ void sound_update_features(void)
 }
 
 /**
- * @brief Release the module's GPIO request.
+ * @brief Release any resources held by the module.
  *
- * Releases the GPIO line requested in `sound_init()`. Does NOT close
- * the shared chip handle (`g_seg_chip`); that is done by `main()`.
- * Sets `g_req` to NULL afterwards. Safe to call multiple times.
+ * No resources to release (no GPIO lines or dynamic allocations).
+ * Safe to call multiple times.
  *
  * @param None.
  * @return void.
  */
 void sound_close(void)
 {
-    if (g_req) {
-        gpiod_line_request_release(g_req);
-        g_req = NULL;
-    }
-    /* The chip handle is owned by main() and must not be closed here. */
+    /* Nothing to do. */
 }
 
 /**
@@ -336,9 +238,9 @@ int   sound_get_raw(void)            { return g_raw; }
 float sound_get_energy(void)         { return g_energy; }
 
 /**
- * @brief Get the estimated speech rate (digital pulse count / 10).
+ * @brief Get the speech rate – always 0.0.
  *
- * @return float Speech rate in [0, 1].
+ * @return float Always 0.0.
  */
 float sound_get_speech_rate(void)    { return g_speech_rate; }
 
@@ -364,12 +266,6 @@ int   sound_get_spike(void)          { return g_spike; }
 int   sound_get_human_presence(void) { return g_human_presence; }
 
 #else /* !ENABLE_SOUND */
-
-/**
- * @brief Stub pulse counter when ENABLE_SOUND is not defined.
- * Always zero.
- */
-volatile int g_sound_pulse_count = 0;
 
 /**
  * @brief Stub initialisation. Does nothing.
