@@ -43,7 +43,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mood_model import load_model, INPUT_DIM, NUM_CLASSES, WINDOW_SIZE
-from emotion_profiles import EMOTION_PROFILES
+from emotion_profiles import EMOTION_PROFILES, EMOTION_COLOR_PROFILES
 
 # ---------------------------------------------------------------------------
 # Paths — this file lives in <UROP>/ai_model/hsv_emotion_classifier,
@@ -68,6 +68,41 @@ EMOTION_LABELS = {
     pid: info['name'].replace('_', ' ').title()
     for pid, info in EMOTION_PROFILES.items()
 }
+
+
+EMOTION_DISPLAY_COLORS = {}
+for pid, info in EMOTION_COLOR_PROFILES.items():
+    base = info['colors'][0]
+    # Standard HSV: H in [0, 360], S and V in [0, 255]
+    h = base['h'] % 360
+    s = min(max(base['s'], 0), 255) / 255.0
+    v = min(max(base['v'], 0), 255) / 255.0
+
+    # Pure Python HSV to RGB conversion
+    c = v * s
+    x = c * (1 - abs((h / 60) % 2 - 1))
+    m = v - c
+
+    if 0 <= h < 60:
+        r, g, b = c, x, 0
+    elif 60 <= h < 120:
+        r, g, b = x, c, 0
+    elif 120 <= h < 180:
+        r, g, b = 0, c, x
+    elif 180 <= h < 240:
+        r, g, b = 0, x, c
+    elif 240 <= h < 300:
+        r, g, b = x, 0, c
+    else:
+        r, g, b = c, 0, x
+
+    # Scale back to 0-255 integers
+    EMOTION_DISPLAY_COLORS[pid] = (
+        int((r + m) * 255),
+        int((g + m) * 255),
+        int((b + m) * 255)
+    )
+
 
 # 26-D feature order — must match FEATURE_COLS the scaler/model were fit on
 FEATURE_COLS = [
@@ -484,6 +519,26 @@ class EmotionClassifier:
             self.current_confidence = 0.0
             self._sent_count = 0
             print('\n[INFO] Buffer reset.')
+    def createQueue(self):
+        try:
+            self.queue = InferQueue(MQ_NAME)
+            self.q_status = self.queue.status()
+        except MQSendError as e:
+            print(f'[FATAL] message queue unavailable: {e}')
+            sys.exit(1)
+    def get_current_state(self) -> dict:
+        """Return current prediction, confidence, probabilities, and color in RGB."""
+        if self.current_prediction in EMOTION_DISPLAY_COLORS:
+            bgr = EMOTION_DISPLAY_COLORS[self.current_prediction]
+            rgb = (bgr[2], bgr[1], bgr[0])  # Convert BGR to RGB
+        else:
+            rgb = (0, 0, 0)  # Default fallback if no valid prediction yet
+
+        return {
+            'prediction': self.current_prediction,
+            'confidence': self.current_confidence,
+            'color': rgb
+        }
 
     def run(self, queue):
         """
