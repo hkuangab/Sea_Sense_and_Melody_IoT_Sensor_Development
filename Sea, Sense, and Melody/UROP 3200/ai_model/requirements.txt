@@ -1,1 +1,6 @@
-
+fastapi
+redis
+types-redis
+uvicorn[standard]
+paho-mqtt
+webbrowser
