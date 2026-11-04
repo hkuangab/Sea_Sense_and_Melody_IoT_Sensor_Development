@@ -1,0 +1,10 @@
+fastapi
+redis
+types-redis
+uvicorn[standard]
+numpy>=1.26.0
+opencv-python>=4.8.0
+torch>=2.1.0
+scikit-learn>=1.3.0
+pandas>=2.0.0
+wheel>=0.41.0
