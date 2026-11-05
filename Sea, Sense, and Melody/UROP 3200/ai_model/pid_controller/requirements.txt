@@ -1,0 +1,25 @@
+# ============================================================================
+# Required Python packages for HSV colour tracking with pan/tilt servos
+#
+# Version: 2.0.0
+# Supports PID control, median filter, slew-rate limiter, and more.
+#
+# Author: KUANG, Haozhe
+# Affiliation: The Hong Kong University of Science and Technology
+# Email: hkuangab@connect.ust.hk
+# License: MIT
+# ============================================================================
+
+# Core computer vision and numerical libraries
+opencv-python>=4.8.0
+numpy>=1.26.0
+
+# Servo hardware control via PCA9685 (Adafruit ServoKit)
+adafruit-circuitpython-servokit>=1.3.14
+
+# Raspberry Pi camera support (libcamera backend)
+picamera2>=0.3.19
+libcamera>=0.3.0
+
+# (Optional) For additional statistical functions used in median filter
+# Already covered by numpy.

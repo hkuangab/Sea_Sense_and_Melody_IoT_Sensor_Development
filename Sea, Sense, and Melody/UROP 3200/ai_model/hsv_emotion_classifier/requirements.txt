@@ -1,0 +1,29 @@
+# hsv_emotion_classifier — Raspberry Pi 5
+#
+# Author: KUANG, Haozhe
+# Affiliation: The Hong Kong University of Science and Technology
+# Email: hkuangab@connect.ust.hk
+# Date: October 2026
+#
+# ============================================================
+# System dependencies (install via apt FIRST):
+#   sudo apt update
+#   sudo apt install -y \
+#       python3-picamera2 \
+#       python3-opencv \
+#       python3-numpy \
+#       python3-sklearn \
+#       python3-pandas \
+#       python3-pip
+#
+# Note: On Raspberry Pi OS, torch is best installed via:
+#   pip3 install torch --index-url https://download.pytorch.org/whl/cpu
+# ============================================================
+#
+# Python packages (install via pip after system deps):
+numpy>=1.26.0
+opencv-python>=4.8.0
+torch>=2.1.0
+scikit-learn>=1.3.0
+pandas>=2.0.0
+wheel>=0.41.0

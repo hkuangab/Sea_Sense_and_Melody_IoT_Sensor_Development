@@ -1,0 +1,44 @@
+# Doxyfile for Sensor Box
+#
+# Generate the HTML reference manual with:
+#     make doxygen
+# or, directly:
+#     doxygen Doxyfile
+#
+# Output is written to docs/doxygen_out/html/index.html.
+
+PROJECT_NAME           = "Sensor Box"
+PROJECT_BRIEF          = "Multi-sensor data acquisition program for the Raspberry Pi 5"
+PROJECT_NUMBER         = 2.2.0
+
+# Where to read source files from and where to write the output.
+INPUT                  = .
+RECURSIVE              = YES
+EXCLUDE                = docs/doxygen_out
+OUTPUT_DIRECTORY       = docs/doxygen_out
+GENERATE_LATEX         = NO
+HTML_OUTPUT            = html
+
+# Extract documentation from all entities, including static / private ones.
+EXTRACT_ALL            = YES
+EXTRACT_STATIC         = YES
+INTERNAL_DOCS          = NO
+
+# The headers already use Javadoc-style brief tags ("@brief").
+JAVADOC_AUTOBRIEF      = YES
+QT_AUTOBRIEF           = NO
+
+# Pretty HTML, with a search box and a tree-style class index.
+GENERATE_HTML          = YES
+SEARCHENGINE           = YES
+GENERATE_TREEVIEW      = YES
+DISABLE_INDEX          = NO
+
+# Source code should be visible inside each page for reference.
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+
+# Quiet mode: errors still appear, but routine progress is suppressed.
+QUIET                  = YES
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = NO
