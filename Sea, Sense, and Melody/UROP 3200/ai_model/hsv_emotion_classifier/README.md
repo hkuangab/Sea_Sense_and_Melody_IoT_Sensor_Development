@@ -138,16 +138,31 @@ Software
 
 ---
 
+
 ## Installation
+
+Tested on Raspberry Pi OS Bookworm 64-bit, Python 3.11+
+
 bash
 sudo apt update
 sudo apt install -y python3-picamera2 python3-opencv \
 python3-numpy python3-sklearn python3-pandas
+
+# Navigate to project folder
 cd ~/Desktop/UROP\ 3200/ai_model/hsv_emotion_classifier
+
+# Create venv (keep system site packages for picamera2)
 python3 -m venv venv --system-site-packages
 source venv/bin/activate
+
+# Install PyTorch CPU build
 pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+# Create output directories
 mkdir -p trained_model toy_dataset captured_frames
+
+
+
 ---
 
 ## Usage
